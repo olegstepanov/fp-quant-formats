@@ -4,12 +4,6 @@ from rich.console import Console
 from rich.table import Table
 
 
-def print_header(text: str, double_underline: bool = False) -> None:
-    print(text)
-    underline_char = "=" if double_underline else "-"
-    print(underline_char * len(text))
-
-
 def format_bits(value: int, width: int) -> str:
     return format(value, f"0{width}b")
 
@@ -95,11 +89,11 @@ def main() -> None:
     args = parser.parse_args()
     console = Console()
 
-    print_header(f"FP{args.bits} formats:", double_underline=True)
+    console.rule(f"FP{args.bits} formats:", characters="=", align="left")
 
     for exp_bits in range(args.bits):
         man_bits = args.bits - exp_bits - 1
-        print_header(f"E{exp_bits}M{man_bits} values:")
+        console.rule(f"E{exp_bits}M{man_bits} values:", align="left")
         print_format_table(console, args.bits, exp_bits, man_bits)
         print()
 
