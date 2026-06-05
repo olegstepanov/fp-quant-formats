@@ -3,6 +3,13 @@ import argparse
 from rich.console import Console
 from rich.table import Table
 
+# Common NVIDIA tensor-core formats: (total_bits, exp_bits, mantissa_bits)
+NVIDIA_FORMATS: list[tuple[int, int, int]] = [
+    (4, 2, 1),  # NVFP4
+    (8, 4, 3),  # FP8 E4M3 (forward pass / weights)
+    (8, 5, 2),  # FP8 E5M2 (gradients)
+]
+
 
 def format_bits(value: int, width: int) -> str:
     return format(value, f"0{width}b")
@@ -79,23 +86,48 @@ def print_format_table(
     console.print(table)
 
 
+def print_all_formats(console: Console, total_bits: int) -> None:
+    console.rule(f"FP{total_bits} formats:", characters="=", align="left")
+
+    for exp_bits in range(total_bits):
+        man_bits = total_bits - exp_bits - 1
+        console.rule(f"E{exp_bits}M{man_bits} values:", align="left")
+        print_format_table(console, total_bits, exp_bits, man_bits)
+        print()
+
+
+def print_nvidia_formats(console: Console) -> None:
+    current_bits: int | None = None
+
+    for total_bits, exp_bits, man_bits in NVIDIA_FORMATS:
+        if total_bits != current_bits:
+            console.rule(f"FP{total_bits} formats:", characters="=", align="left")
+            current_bits = total_bits
+        console.rule(f"E{exp_bits}M{man_bits} values:", align="left")
+        print_format_table(console, total_bits, exp_bits, man_bits)
+        print()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="fp-quant-formats",
         description="Shows info about different floating point quantization formats",
     )
-    parser.add_argument("--bits", "-b", type=int, default=4, choices=range(2, 9))
+    parser.add_argument(
+        "--bits",
+        "-b",
+        type=int,
+        choices=range(2, 9),
+        help="explore all E?M? layouts for this bit width (when absent, prints common NVIDIA formats)",
+    )
 
     args = parser.parse_args()
     console = Console()
 
-    console.rule(f"FP{args.bits} formats:", characters="=", align="left")
-
-    for exp_bits in range(args.bits):
-        man_bits = args.bits - exp_bits - 1
-        console.rule(f"E{exp_bits}M{man_bits} values:", align="left")
-        print_format_table(console, args.bits, exp_bits, man_bits)
-        print()
+    if args.bits is None:
+        print_nvidia_formats(console)
+    else:
+        print_all_formats(console, args.bits)
 
 
 if __name__ == "__main__":
